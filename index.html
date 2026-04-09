@@ -47,6 +47,9 @@ table.req tbody td textarea{overflow:hidden;min-height:28px;white-space:pre-wrap
 table.req tbody td input:focus,table.req tbody td textarea:focus{outline:none;background:#f0eeff;border-radius:2px}
 table.req tbody td select{border:1px solid #e0e0e0;border-radius:2px;font-size:8.5px;background:#fff;color:#555;font-family:var(--font-sans);width:100%;padding:2px;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 table.req tbody td select.module-select{font-size:8.5px;line-height:1.15;min-height:30px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;padding:3px 16px 3px 4px}
+.row-action{width:34px;text-align:center}
+.del-row-btn{width:24px;height:24px;border:1px solid #e4c4ca;border-radius:999px;background:#fff5f6;color:#a34d5d;font-size:13px;line-height:1;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.del-row-btn:hover{background:#fdebed;border-color:#d8a7b1;color:#8a3f4e}
 .add-btn{display:inline-flex;align-items:center;gap:5px;border:1px dashed #AFA9EC;background:transparent;color:#534AB7;font-size:10.5px;font-family:var(--font-sans);padding:4px 12px;border-radius:3px;cursor:pointer;margin-top:6px}
 .add-btn:hover{background:#EEEDFE}
 .sol-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px}
@@ -148,13 +151,14 @@ table.req tbody td select.module-select{font-size:8.5px;line-height:1.15;min-hei
       <table class="req">
         <thead><tr>
           <th style="width:22px">#</th>
-          <th style="width:105px;text-align:left;padding-left:7px">Requirement <i>Yêu cầu</i></th>
-          <th style="width:140px;text-align:left;padding-left:7px">Details <i>Mô tả chi tiết</i></th>
-          <th style="width:124px">Module <i>Phân hệ</i></th>
+          <th style="width:98px;text-align:left;padding-left:7px">Requirement <i>Yêu cầu</i></th>
+          <th style="width:132px;text-align:left;padding-left:7px">Details <i>Mô tả chi tiết</i></th>
+          <th style="width:118px">Module <i>Phân hệ</i></th>
           <th style="width:62px">AX 2012 <i>Hiện tại</i></th>
           <th style="width:66px">Business<br>Central</th>
           <th style="width:66px">D365<br>F&amp;O</th>
           <th style="width:66px">Odoo</th>
+          <th class="row-action">Del</th>
         </tr></thead>
         <tbody id="req-tbody"></tbody>
       </table>
@@ -256,7 +260,6 @@ const moduleOpts=[
   ['system-administration','System administration']
 ];
 const evOpts=[['','—'],['Y','Đáp ứng'],['N','Không đáp ứng']];
-let rc=0;
 function autoGrowTextarea(el){
   if(!el||el.tagName!=='TEXTAREA')return;
   el.style.height='auto';
@@ -283,18 +286,45 @@ function normalizeFilePart(text,fallback='user'){
   return normalized||fallback;
 }
 
-function addRow(n){
+function addRow(){
+  const tbody=document.getElementById('req-tbody');
+  const n=tbody.querySelectorAll('tr').length+1;
   const tr=document.createElement('tr');
   const nd=document.createElement('td');nd.className='rn';nd.textContent=n;tr.appendChild(nd);
   const rt=document.createElement('td');const ri=document.createElement('textarea');ri.rows=1;ri.placeholder='Requirement...';rt.appendChild(ri);tr.appendChild(rt);
   const dt=document.createElement('td');const da=document.createElement('textarea');da.rows=2;da.placeholder='Details...';dt.appendChild(da);tr.appendChild(dt);
   const pt=document.createElement('td');const ps=mkSel(moduleOpts);ps.classList.add('module-select');pt.appendChild(ps);tr.appendChild(pt);
   ['','','',''].forEach(()=>{const td=document.createElement('td');td.style.textAlign='center';const s=mkSel(evOpts,evState);td.appendChild(s);tr.appendChild(td);});
-  document.getElementById('req-tbody').appendChild(tr);
+  const actionTd=document.createElement('td');actionTd.className='row-action';
+  const delBtn=document.createElement('button');
+  delBtn.type='button';
+  delBtn.className='del-row-btn';
+  delBtn.setAttribute('aria-label',`Delete row ${n}`);
+  delBtn.title='Delete row';
+  delBtn.textContent='×';
+  delBtn.addEventListener('click',()=>{
+    tr.remove();
+    reindexRows();
+  });
+  actionTd.appendChild(delBtn);
+  tr.appendChild(actionTd);
+  tbody.appendChild(tr);
   bindAutoGrow(tr);
 }
-for(let i=1;i<=5;i++){rc++;addRow(rc);}
-document.getElementById('add-btn').addEventListener('click',()=>{rc++;addRow(rc);});
+function reindexRows(){
+  document.querySelectorAll('#req-tbody tr').forEach((tr,index)=>{
+    const rowNumber=index+1;
+    const numCell=tr.querySelector('.rn');
+    const delBtn=tr.querySelector('.del-row-btn');
+    if(numCell)numCell.textContent=rowNumber;
+    if(delBtn){
+      delBtn.setAttribute('aria-label',`Delete row ${rowNumber}`);
+      delBtn.title=`Delete row ${rowNumber}`;
+    }
+  });
+}
+for(let i=1;i<=5;i++)addRow();
+document.getElementById('add-btn').addEventListener('click',()=>{addRow();});
 bindAutoGrow(document);
 document.querySelectorAll('.sol-card').forEach(c=>{
   c.addEventListener('click',function(){
@@ -407,6 +437,8 @@ document.getElementById('exp-btn').addEventListener('click',function(){
     el.parentNode.replaceChild(sp,el);
   });
   clone.querySelectorAll('.add-btn').forEach(b=>b.remove());
+  clone.querySelectorAll('.row-action').forEach(el=>el.remove());
+  clone.querySelectorAll('.del-row-btn').forEach(el=>el.remove());
   const page=clone.querySelector('.page');
   if(page){
     page.style.border='none';
@@ -451,8 +483,11 @@ document.getElementById('exp-btn').addEventListener('click',function(){
     const pdf=new jsPDFCtor({orientation:'portrait',unit:'mm',format:'a4'});
     const pdfWidth=210;
     const pdfHeight=297;
+    const pageBottomMarginMm=12;
+    const continuationTopMarginMm=12;
     const pxPerMm=canvas.width/pdfWidth;
-    const pageSliceHeight=Math.floor(pdfHeight*pxPerMm);
+    const firstPageSliceHeight=Math.floor((pdfHeight-pageBottomMarginMm)*pxPerMm);
+    const continuationSliceHeight=Math.floor((pdfHeight-continuationTopMarginMm-pageBottomMarginMm)*pxPerMm);
     const targetRect=target.getBoundingClientRect();
     const breakSelectors=[
       '.hdr',
@@ -473,9 +508,9 @@ document.getElementById('exp-btn').addEventListener('click',function(){
       };
     }).filter(bp=>bp.bottom>0).sort((a,b)=>a.bottom-b.bottom);
 
-    function nextBreak(offsetY){
-      const naturalBreak=offsetY+pageSliceHeight;
-      const minBreak=offsetY+Math.floor(pageSliceHeight*0.65);
+    function nextBreak(offsetY,sliceHeight){
+      const naturalBreak=offsetY+sliceHeight;
+      const minBreak=offsetY+Math.floor(sliceHeight*0.65);
       const candidate=[...breakpoints].reverse().find(bp=>bp.bottom<=naturalBreak&&bp.bottom>minBreak);
       if(candidate)return candidate.bottom;
       return Math.min(naturalBreak,canvas.height);
@@ -485,7 +520,8 @@ document.getElementById('exp-btn').addEventListener('click',function(){
     let pageIndex=0;
 
     while(offsetY<canvas.height){
-      const sliceBottom=nextBreak(offsetY);
+      const sliceHeightLimit=pageIndex===0?firstPageSliceHeight:continuationSliceHeight;
+      const sliceBottom=nextBreak(offsetY,sliceHeightLimit);
       const slice=document.createElement('canvas');
       slice.width=canvas.width;
       slice.height=Math.min(sliceBottom-offsetY,canvas.height-offsetY);
@@ -497,7 +533,7 @@ document.getElementById('exp-btn').addEventListener('click',function(){
       const imageData=slice.toDataURL('image/jpeg',0.98);
       const renderedHeight=slice.height/pxPerMm;
       if(pageIndex>0)pdf.addPage();
-      pdf.addImage(imageData,'JPEG',0,0,pdfWidth,renderedHeight,undefined,'FAST');
+      pdf.addImage(imageData,'JPEG',0,pageIndex===0?0:continuationTopMarginMm,pdfWidth,renderedHeight,undefined,'FAST');
       offsetY=sliceBottom;
       pageIndex+=1;
     }
